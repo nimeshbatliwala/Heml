@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>Mobile HTML Editor — v1.8.1 (Filename Modal)</title>
+<style>
+  :root{
+    --bg-sky:#f0f9ff;
+    --text-sky:#111;
+    --line-stripe:#e0f2fe;
+    --bg-dark:#0f172a;
+    --panel-dark:#111827;
+    --text-dark:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;font-family:sans-serif;height:100dvh;display:flex;flex-direction:column;overflow:hidden;
+    background:var(--bg-sky);color:var(--text-sky);
+  }
+
+  .editor-area,.editor-wrap,#lineNumbers,#editor{min-height:0}
+  .editor-area{flex:1 1 auto;display:flex;overflow:hidden}
+  .editor-wrap{display:flex;flex:1 1 auto;overflow:hidden;margin:8px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);background:#fff;}
+  #editor{flex:1 1 auto;height:100%;overflow:auto}
+
+  .tabsbar{flex:0 0 auto;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.08);display:grid;place-items:center;padding:8px 6px;position:relative;z-index:12;}
+  .tabswrap{display:inline-flex;gap:8px}
+  .tbtn{flex:0 0 auto;width:92px;padding:9px 10px;text-align:center;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;user-select:none;background:linear-gradient(145deg,#e2e8f0,#cbd5e1);box-shadow:0 2px 8px rgba(0,0,0,.18);transition:transform .15s ease,filter .15s ease,box-shadow .15s ease;}
+  .tbtn:hover{filter:brightness(1.08);transform:translateY(-2px)}
+  .tbtn:active{transform:scale(.96)}
+  .save{background:linear-gradient(145deg,#f87171,#ef4444);color:#fff}
+  .open{background:linear-gradient(145deg,#38bdf8,#0284c7);color:#fff}
+  .savel{background:linear-gradient(145deg,#22c55e,#16a34a);color:#fff}
+  .openl{background:linear-gradient(145deg,#d8b4fe,#a855f7);color:#fff}
+  .import{background:linear-gradient(145deg,#fcd34d,#f59e0b);color:#111}
+  .run{background:linear-gradient(145deg,#fde047,#facc15);color:#111}
+  .clear{background:linear-gradient(145deg,#fca5a5,#ef4444);color:#fff}
+
+  .toolbar{flex:0 0 auto;display:flex;gap:6px;padding:6px;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.08);overflow-x:auto;white-space:nowrap;scrollbar-width:none;z-index:10;}
+  .toolbar::-webkit-scrollbar{display:none}
+
+  .dropdown-panel{position:fixed;display:none;z-index:9999;background:#fff;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);min-width:260px;max-height:50vh;overflow:auto;padding:6px;scrollbar-width:thin;}
+  .dropdown-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;margin:4px 2px;background:#f3e8ff;color:#2b0b33;border-radius:8px;cursor:pointer;}
+  .dropdown-item:hover{background:#e9d5ff}
+  .dropdown-name{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+  .dropdown-time{font-size:11px;color:#5b4b66}
+  .drop-del{margin-left:8px;border:none;border-radius:6px;padding:4px 7px;background:#ef4444;color:#fff;font-size:12px;cursor:pointer;}
+
+  .line-numbers{background:#f3f4f6;padding:8px 6px;font-size:13px;color:#555;text-align:right;user-select:none;flex:0 0 58px;overflow:auto;scrollbar-width:none;border-right:1px solid #e5e7eb;}
+  .line-numbers::-webkit-scrollbar{display:none}
+  .line-numbers .part-sep{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#a5b4fc;color:#111;font-weight:700;margin:4px 0;border-radius:6px;padding:3px 6px}
+  .line-numbers .kill{border:none;border-radius:6px;padding:2px 6px;background:#ef4444;color:#fff;font-size:11px;cursor:pointer}
+  #editor{border:none;outline:none;padding:10px 12px;font-size:14px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;line-height:1.4;resize:none;background:repeating-linear-gradient(to bottom,#fff,#fff 22px,var(--line-stripe) 22px,var(--line-stripe) 44px);color:#111}
+
+  #panePreview{display:none;flex:1}
+  #panePreview.fullscreen iframe{position:fixed;inset:0;width:100vw;height:100dvh;border:none;z-index:10}
+  iframe{width:100%;height:100%;border:none;background:#fff}
+
+  #fabWrap{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:30;display:none;gap:10px}
+  .fab{background:rgba(20,20,20,.35);color:#fff;border:1px solid rgba(255,255,255,.25);padding:8px 16px;border-radius:20px;backdrop-filter:blur(6px)}
+
+  body.classic{background:linear-gradient(145deg,#e0f2fe,#dbeafe);}
+  body.classic .tabsbar, body.classic .toolbar{background:rgba(255,255,255,.60);backdrop-filter:blur(12px)}
+  body.classic .tbtn{background:rgba(255,255,255,.30);border:1px solid rgba(255,255,255,.50);color:#0f172a;text-shadow:0 1px 0 rgba(255,255,255,.55);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+  body.dark{background:var(--bg-dark);color:var(--text-dark)}
+  body.dark .tabsbar, body.dark .toolbar{background:var(--panel-dark)}
+  body.dark .tbtn{background:#1e293b;color:#e5e7eb}
+  body.dark .editor-wrap{background:#0b1220}
+  body.dark #editor{background:repeating-linear-gradient(to bottom,#0b1220,#0b1220 22px,#0f172a 22px,#0f172a 44px);color:#e5e7eb}
+  body.dark .line-numbers{background:#111827;color:#cbd5e1;border-right-color:#0b1220}
+
+  .toast{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:10px 14px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:99999}
+  .toast.show{opacity:1}
+
+  #partMenu{position:fixed;inset:0;display:none;z-index:10000;background:rgba(0,0,0,.25)}
+  #partMenu .panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#ffffff;color:#111;min-width:260px;max-height:60vh;overflow:auto;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35);padding:10px}
+  body.dark #partMenu .panel{background:#0b1220;color:#e5e7eb}
+  #partMenu .title{font-weight:800;font-size:14px;margin:6px 6px 10px}
+  #partMenu .item{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px;padding:8px 10px;border-radius:8px;background:#eef2ff}
+  body.dark #partMenu .item{background:#1f2937}
+  #partMenu .item button{border:none;background:#ef4444;color:#fff;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
+  #partMenu .footer{display:flex;justify-content:center;padding:6px}
+  #partMenu .cancel{border:none;background:#e5e7eb;color:#111;border-radius:10px;padding:8px 14px;cursor:pointer}
+  body.dark #partMenu .cancel{background:#334155;color:#e5e7eb}
+
+  /* small folder indicator */
+  #folderIndicator{font-size:12px;color:#555;margin-left:8px;align-self:center}
+
+  /* Filename / Overwrite / Download modals (inline) */
+  .modal-backdrop-ui{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:100000}
+  .modal-ui{width:92%;max-width:420px;background:#fff;border-radius:12px;padding:12px;box-shadow:0 20px 60px rgba(0,0,0,.4);font-family:system-ui}
+  .modal-ui h3{margin:0 0 8px 0;font-size:16px}
+  .modal-row{display:flex;gap:8px;align-items:center;margin-top:10px}
+  .modal-input{flex:1;padding:8px;border-radius:8px;border:1px solid #ddd;font-size:14px}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+  .btn-ghost{background:transparent;border:1px dashed #999;padding:8px 10px;border-radius:10px;cursor:pointer}
+  .btn-primary{background:#2563eb;color:#fff;border:none;padding:8px 12px;border-radius:10px;cursor:pointer}
+  .btn-danger{background:#ef4444;color:#fff;border:none;padding:8px 12px;border-radius:10px;cursor:pointer}
+  .btn-muted{background:#f3f4f6;border:1px solid #e5e7eb;padding:8px 10px;border-radius:10px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<!-- Tabs -->
+<div id="tabsbar" class="tabsbar">
+  <div class="tabswrap">
+    <button id="btnEdit" class="tbtn">✏️ Edit</button>
+    <button id="btnPreview" class="tbtn">👁️ Preview</button>
+  </div>
+</div>
+
+<!-- Row 1 -->
+<div class="toolbar">
+  <button class="tbtn save" id="btnSave">💾 Save</button>
+  <span id="folderIndicator">— No folder —</span>
+
+  <button class="tbtn open" id="btnOpenTab">🔗 Open</button>
+  <button class="tbtn savel" id="btnSaveL">📥 SaveL</button>
+  <button class="tbtn openl" id="btnOpenL">📂 OpenL</button>
+  <label class="tbtn import">⬆️ Import
+    <input type="file" id="fileInput" accept=".html,.htm,.txt,.css,.js" style="display:none">
+  </label>
+  <button class="tbtn" id="btnTheme">🌞</button>
+</div>
+
+<!-- Row 2 -->
+<div class="toolbar">
+  <button class="tbtn run" id="btnRun">▶ Run</button>
+  <button class="tbtn" id="btnCopy">📋 Copy</button>
+  <button class="tbtn" id="btnPaste">📌 Paste</button>
+  <button class="tbtn" id="btnPartPaste">📑 PartPaste</button>
+  <button class="tbtn clear" id="btnDeletePart">🗑 Delete Part</button>
+  <button class="tbtn clear" id="btnClear">🗑 Clear</button>
+</div>
+
+<!-- Editor -->
+<div class="editor-area" id="paneEdit">
+  <div class="editor-wrap">
+    <div class="line-numbers" id="lineNumbers"></div>
+    <textarea id="editor"></textarea>
+  </div>
+</div>
+
+<!-- Preview -->
+<div id="panePreview"><iframe id="preview"></iframe></div>
+
+<!-- Floating in preview -->
+<div id="fabWrap">
+  <button class="fab" onclick="showTab('edit')">↩ Edit</button>
+  <button class="fab" onclick="renderPreview()">⟳ Refresh</button>
+</div>
+
+<!-- OpenL dropdown -->
+<div id="openLPanel" class="dropdown-panel"></div>
+
+<!-- Delete-Part Popup -->
+<div id="partMenu">
+  <div class="panel">
+    <div class="title">Delete Part</div>
+    <div id="partList"></div>
+    <div class="footer"><button class="cancel" id="partCancel">Cancel</button></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- INLINE MODALS -->
+<!-- backdrop for filename modal -->
+<div id="modalBackdrop" class="modal-backdrop-ui" aria-hidden="true">
+  <div class="modal-ui" role="dialog" aria-modal="true" id="filenameModal">
+    <h3 id="filenameModalTitle">Save file</h3>
+    <div style="font-size:13px;color:#444">Enter file name</div>
+    <div class="modal-row">
+      <input id="filenameInput" class="modal-input" type="text" placeholder="index.html">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="filenameCancel">Cancel</button>
+      <button class="btn-primary" id="filenameOk">Save</button>
+    </div>
+  </div>
+
+  <!-- overwrite modal (hidden inside same backdrop) -->
+  <div class="modal-ui" role="dialog" aria-modal="true" id="overwriteModal" style="display:none;margin-top:12px">
+    <h3>File exists</h3>
+    <div style="font-size:13px;color:#444">The file already exists in the remembered folder. What should we do?</div>
+    <div style="margin-top:10px">
+      <label style="font-size:13px;color:#444">Rename (optional):</label>
+      <input id="renameInput" class="modal-input" type="text" placeholder="">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="overwriteCancel">Cancel</button>
+      <button class="btn-muted" id="overwriteRename">Rename & Save</button>
+      <button class="btn-danger" id="overwriteYes">Overwrite</button>
+    </div>
+  </div>
+
+  <!-- download confirm modal -->
+  <div class="modal-ui" role="dialog" aria-modal="true" id="downloadModal" style="display:none;margin-top:12px">
+    <h3>Save not available</h3>
+    <div style="font-size:13px;color:#444">Direct folder save not available. Do you want to download the file instead?</div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn-ghost" id="downloadCancel">Cancel</button>
+      <button class="btn-primary" id="downloadOk">Download</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Elements & keys */
+const editor = document.getElementById('editor');
+const lineNumbers = document.getElementById('lineNumbers');
+const preview = document.getElementById('preview');
+const paneEdit = document.getElementById('paneEdit');
+const panePreview = document.getElementById('panePreview');
+const fabWrap = document.getElementById('fabWrap');
+const btnOpenL = document.getElementById('btnOpenL');
+const openLPanel = document.getElementById('openLPanel');
+const tabsbar = document.getElementById('tabsbar');
+const toast = document.getElementById('toast');
+const folderIndicator = document.getElementById('folderIndicator');
+
+const modalBackdrop = document.getElementById('modalBackdrop');
+const filenameModal = document.getElementById('filenameModal');
+const filenameInput = document.getElementById('filenameInput');
+const filenameOk = document.getElementById('filenameOk');
+const filenameCancel = document.getElementById('filenameCancel');
+
+const overwriteModal = document.getElementById('overwriteModal');
+const renameInput = document.getElementById('renameInput');
+const overwriteYes = document.getElementById('overwriteYes');
+const overwriteRename = document.getElementById('overwriteRename');
+const overwriteCancel = document.getElementById('overwriteCancel');
+
+const downloadModal = document.getElementById('downloadModal');
+const downloadOk = document.getElementById('downloadOk');
+const downloadCancel = document.getElementById('downloadCancel');
+
+const THEME_KEY = 'editor_theme_cycle_v3';
+const LAST_FILE_KEY = 'editor_last_filename_v3';
+
+/* IndexedDB (SaveL/OpenL) */
+const DB_NAME='html_editor_db2'; const DB_VER=1; const STORE='docs';
+function idbOpen(){return new Promise((res,rej)=>{const req=indexedDB.open(DB_NAME,DB_VER);
+  req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(STORE)){const os=db.createObjectStore(STORE,{keyPath:'name'});os.createIndex('ts','ts');}};
+  req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error);});}
+async function idbPut(doc){const db=await idbOpen();return new Promise((res,rej)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(doc);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error);});}
+async function idbGetAll(){const db=await idbOpen();return new Promise((res,rej)=>{const tx=db.transaction(STORE,'readonly');const req=tx.objectStore(STORE).getAll();req.onsuccess=()=>res(req.result.sort((a,b)=>b.ts-a.ts));req.onerror=()=>rej(req.error);});}
+async function idbGet(name){const db=await idbOpen();return new Promise((res,rej)=>{const tx=db.transaction(STORE,'readonly');const req=tx.objectStore(STORE).get(name);req.onsuccess=()=>res(req.result||null);req.onerror=()=>rej(tx.error);});}
+async function idbDelete(name){const db=await idbOpen();return new Promise((res,rej)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(name);tx.oncomplete=()=>res(true);tx.onerror=()=>rej(tx.error);});}
+
+/* Directory handle persistence (remember chosen folder) */
+const DIR_DB = 'pro_html_editor_dir_v1';
+const DIR_STORE = 'dir';
+let dirDbP = null;
+function openDirDb(){ if(dirDbP) return dirDbP; dirDbP = new Promise((res,rej)=>{ const r=indexedDB.open(DIR_DB,1); r.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains(DIR_STORE)) db.createObjectStore(DIR_STORE); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); return dirDbP; }
+async function saveDirHandle(h){
+  const db = await openDirDb();
+  return new Promise((res,rej)=>{ const tx=db.transaction(DIR_STORE,'readwrite'); const st=tx.objectStore(DIR_STORE); const req = st.put(h,'dirHandle'); req.onsuccess = ()=>res(true); req.onerror = (ev)=> rej(ev); });
+}
+async function getDirHandle(){
+  const db = await openDirDb();
+  return new Promise((res,rej)=>{ const tx=db.transaction(DIR_STORE,'readonly'); const st=tx.objectStore(DIR_STORE); const req = st.get('dirHandle'); req.onsuccess = ()=> res(req.result); req.onerror = ()=> rej(req.error); });
+}
+async function clearDirHandle(){
+  const db = await openDirDb();
+  return new Promise((res,rej)=>{ const tx=db.transaction(DIR_STORE,'readwrite'); const st=tx.objectStore(DIR_STORE); const req = st.delete('dirHandle'); req.onsuccess = ()=> res(true); req.onerror = ()=> rej(req.error); });
+}
+
+/* Helper: permission check for directory handle */
+async function hasWritePermission(dirHandle){
+  if(!dirHandle) return false;
+  try{
+    if(dirHandle.queryPermission){
+      const perm = await dirHandle.queryPermission({ mode:'readwrite' });
+      if(perm === 'granted') return true;
+    }
+    if(dirHandle.requestPermission){
+      const perm2 = await dirHandle.requestPermission({ mode:'readwrite' });
+      if(perm2 === 'granted') return true;
+    }
+  }catch(e){}
+  return false;
+}
+
+/* Save blob into stored dir handle (with overwrite modal) */
+async function saveBlobToStoredDir(blob, filename){
+  try{
+    let dirHandle = await getDirHandle();
+    if(!dirHandle) return { ok:false, reason:'no-handle' };
+    const perm = await hasWritePermission(dirHandle);
+    if(!perm) return { ok:false, reason:'no-perm' };
+
+    // Check if file exists
+    let fileExists = false;
+    try { await dirHandle.getFileHandle(filename, { create:false }); fileExists = true; } catch(e){ fileExists = false; }
+
+    if(fileExists){
+      // Use inline overwrite modal to ask user
+      const res = await showOverwriteModal(filename);
+      if(res === 'cancel') return { ok:false, reason:'cancelled' };
+      if(res === 'overwrite'){
+        // proceed to overwrite with same filename
+      } else if(typeof res === 'string' && res.length){
+        // res is new filename
+        filename = res;
+      }
+    }
+
+    const fh = await dirHandle.getFileHandle(filename, { create:true });
+    const w = await fh.createWritable();
+    await w.write(blob);
+    await w.close();
+    localStorage.setItem(LAST_FILE_KEY, filename);
+    return { ok:true };
+  }catch(e){
+    return { ok:false, error:e };
+  }
+}
+
+/* download fallback (only if user confirms) */
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 10000);
+}
+
+/* Toast & helpers */
+function showToast(msg,ms=1400){ toast.textContent = msg; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),ms); }
+function cleanForPreview(html){return html.replace(/<!--\s*PART.*?-->/gi,'').replace(/<!--\s*END PART.*?-->/gi,''); }
+
+/* update folder indicator UI */
+function updateFolderIndicator(text){ if(text) folderIndicator.textContent = text; else folderIndicator.textContent = '— No folder —'; }
+async function refreshFolderIndicator(){ try { const dirHandle = await getDirHandle(); if(dirHandle && dirHandle.name) updateFolderIndicator(dirHandle.name); else updateFolderIndicator(); } catch(e){ updateFolderIndicator(); } }
+
+/* pick directory and remember it */
+async function pickFolderAndRemember(){
+  if(!window.showDirectoryPicker){
+    showToast('Folder picker not supported');
+    return null;
+  }
+  try{
+    const dirHandle = await window.showDirectoryPicker();
+    if(!dirHandle) return null;
+    try{ await dirHandle.requestPermission?.({mode:'readwrite'}); }catch(e){}
+    await saveDirHandle(dirHandle);
+    updateFolderIndicator(dirHandle.name || '(folder)');
+    showToast('Folder chosen & remembered');
+    return dirHandle;
+  }catch(err){
+    if(err && (err.name === 'AbortError' || /cancel/i.test(err.message||''))) return null;
+    console.error('pickFolder error', err);
+    showToast('Folder pick failed');
+    return null;
+  }
+}
+
+/* >>> Full-height editor sizing (new) <<< */
+function sizeEditorToViewport(){ if (paneEdit.style.display === 'none') return; const barsHeight = (document.getElementById('tabsbar')?.offsetHeight||0) + Array.from(document.querySelectorAll('.toolbar')).reduce((s,el)=>s+el.offsetHeight,0); const remaining = Math.max(120, window.innerHeight - barsHeight - 16); editor.style.height = remaining + 'px'; lineNumbers.style.height = remaining + 'px'; }
+function ensureEditorStretch(){ requestAnimationFrame(sizeEditorToViewport); }
+
+/* Tabs */
+function showTab(which){ if(which==='edit'){ tabsbar.style.display='grid'; paneEdit.style.display='block'; panePreview.style.display='none'; panePreview.classList.remove('fullscreen'); fabWrap.style.display='none'; ensureEditorStretch(); }else{ tabsbar.style.display='none'; renderPreview(); paneEdit.style.display='none'; panePreview.style.display='block'; panePreview.classList.add('fullscreen'); fabWrap.style.display='flex'; } }
+document.getElementById('btnEdit').onclick=()=>showTab('edit');
+document.getElementById('btnPreview').onclick=()=>showTab('preview');
+
+/* Line numbers + parts */
+let partCount=0;
+function updateLineNumbers(){ const lines=editor.value.split('\n');lineNumbers.innerHTML=''; lines.forEach((l,i)=>{ if(/^<!--\s*PART\s*(\d+)/i.test(l)){ const n=(l.match(/(\d+)/)||[])[1]; const row=document.createElement('div');row.className='part-sep'; const label=document.createElement('span');label.textContent='PART '+n; const kill=document.createElement('button');kill.className='kill';kill.title='Delete this part';kill.textContent='❌'; kill.addEventListener('click',(e)=>{e.stopPropagation();deletePart(n);}); row.appendChild(label);row.appendChild(kill);lineNumbers.appendChild(row);}else{ const d=document.createElement('div');d.textContent=i+1;lineNumbers.appendChild(d);} }); }
+function syncScroll(){lineNumbers.scrollTop=editor.scrollTop;}
+editor.addEventListener('input',()=>{updateLineNumbers();ensureEditorStretch();});
+editor.addEventListener('scroll',syncScroll);
+
+window.addEventListener('resize',ensureEditorStretch);
+if (window.visualViewport){ window.visualViewport.addEventListener('resize',ensureEditorStretch); window.visualViewport.addEventListener('scroll',ensureEditorStretch); }
+screen.orientation?.addEventListener?.('change',ensureEditorStretch);
+
+/* Preview */
+function renderPreview(){preview.srcdoc=cleanForPreview(editor.value);}
+document.getElementById('btnRun').onclick=renderPreview;
+
+/* ====== Filename / Overwrite / Download modal helpers (Promise-based) ====== */
+
+function showFilenameModal(defaultName){
+  return new Promise(res=>{
+    modalBackdrop.style.display = 'flex';
+    filenameModal.style.display = 'block';
+    overwriteModal.style.display = 'none';
+    downloadModal.style.display = 'none';
+    filenameInput.value = defaultName || '';
+    filenameInput.focus();
+    const cleanup = ()=>{
+      filenameOk.removeEventListener('click', okFn);
+      filenameCancel.removeEventListener('click', cancelFn);
+      modalBackdrop.style.display = 'none';
+      filenameModal.style.display = 'none';
+    };
+    const okFn = ()=>{ const val = filenameInput.value.trim(); cleanup(); res(val || null); };
+    const cancelFn = ()=>{ cleanup(); res(null); };
+    filenameOk.addEventListener('click', okFn);
+    filenameCancel.addEventListener('click', cancelFn);
+    filenameInput.addEventListener('keydown', function onK(e){ if(e.key==='Enter'){ okFn(); filenameInput.removeEventListener('keydown', onK); } else if(e.key==='Escape'){ cancelFn(); filenameInput.removeEventListener('keydown', onK); } });
+  });
+}
+
+/* overwrite modal returns:
+   - 'overwrite'  -> overwrite with same filename
+   - 'cancel'     -> user cancelled
+   - 'renameName' -> a string (new filename)
+*/
+function showOverwriteModal(originalName){
+  return new Promise(res=>{
+    modalBackdrop.style.display = 'flex';
+    filenameModal.style.display = 'none';
+    overwriteModal.style.display = 'block';
+    downloadModal.style.display = 'none';
+    renameInput.value = originalName;
+    renameInput.select();
+    const cleanup = ()=>{
+      overwriteYes.removeEventListener('click', yesFn);
+      overwriteRename.removeEventListener('click', renameFn);
+      overwriteCancel.removeEventListener('click', cancelFn);
+      modalBackdrop.style.display = 'none';
+      overwriteModal.style.display = 'none';
+    };
+    const yesFn = ()=>{ cleanup(); res('overwrite'); };
+    const renameFn = ()=>{ const v = renameInput.value.trim(); cleanup(); res(v || originalName); };
+    const cancelFn = ()=>{ cleanup(); res('cancel'); };
+    overwriteYes.addEventListener('click', yesFn);
+    overwriteRename.addEventListener('click', renameFn);
+    overwriteCancel.addEventListener('click', cancelFn);
+    renameInput.addEventListener('keydown', function onK(e){ if(e.key==='Enter'){ renameFn(); renameInput.removeEventListener('keydown', onK); } else if(e.key==='Escape'){ cancelFn(); renameInput.removeEventListener('keydown', onK); } });
+  });
+}
+
+function showDownloadConfirmModal(){
+  return new Promise(res=>{
+    modalBackdrop.style.display = 'flex';
+    filenameModal.style.display = 'none';
+    overwriteModal.style.display = 'none';
+    downloadModal.style.display = 'block';
+    const cleanup = ()=>{
+      downloadOk.removeEventListener('click', okFn);
+      downloadCancel.removeEventListener('click', cancelFn);
+      modalBackdrop.style.display = 'none';
+      downloadModal.style.display = 'none';
+    };
+    const okFn = ()=>{ cleanup(); res(true); };
+    const cancelFn = ()=>{ cleanup(); res(false); };
+    downloadOk.addEventListener('click', okFn);
+    downloadCancel.addEventListener('click', cancelFn);
+  });
+}
+
+/* ====== Save behavior with filename modal and overwrite modal ====== */
+async function doSaveHTML_directToRememberedFolder_withModal(filename){
+  if(!filename) return;
+  let name = filename;
+  if(!name.toLowerCase().endsWith('.html')) name += '.html';
+  localStorage.setItem(LAST_FILE_KEY, name);
+  const blob = new Blob([editor.value || ''], { type:'text/html' });
+
+  // 1) Try remembered dir handle
+  try{
+    const dirHandle = await getDirHandle();
+    if(dirHandle){
+      const perm = await hasWritePermission(dirHandle);
+      if(perm){
+        const res = await saveBlobToStoredDir(blob, name); // this uses overwrite modal internally
+        if(res && res.ok){ showToast('Saved to folder: ' + (dirHandle.name || 'remembered')); return; }
+      } else {
+        try{ await dirHandle.requestPermission?.({ mode: 'readwrite' }); const res2 = await saveBlobToStoredDir(blob, name); if(res2 && res2.ok){ showToast('Saved to folder: ' + (dirHandle.name || 'remembered')); return; } }catch(e){}
+      }
+    }
+  }catch(e){
+    console.warn('Error saving to remembered folder:', e);
+  }
+
+  // 2) No usable remembered folder: try ask user to pick folder and remember it
+  if(window.showDirectoryPicker){
+    try{
+      const picked = await pickFolderAndRemember();
+      if(picked){
+        try{
+          const fh = await picked.getFileHandle(name, { create:true });
+          const w = await fh.createWritable();
+          await w.write(blob);
+          await w.close();
+          localStorage.setItem(LAST_FILE_KEY, name);
+          showToast('Saved to folder: ' + (picked.name || 'chosen folder'));
+          return;
+        }catch(err){
+          console.error('Write after pick failed', err);
+        }
+      } // if user cancelled the picker, fallthrough to Save As or download modal below
+    }catch(err){
+      console.error('Folder pick error', err);
+    }
+  }
+
+  // 3) Fallback to showSaveFilePicker
+  if(window.showSaveFilePicker){
+    try{
+      const handle = await window.showSaveFilePicker({ suggestedName: name, types: [{ description:'HTML file', accept:{ 'text/html': ['.html'] } }] });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      localStorage.setItem(LAST_FILE_KEY, name);
+      showToast('Saved via Save As');
+      return;
+    }catch(err){
+      if(err && (err.name === 'AbortError' || /cancel/i.test(err.message||''))){
+        showToast('Save cancelled'); return;
+      }
+      console.error('showSaveFilePicker error', err);
+    }
+  }
+
+  // 4) Final fallback: offer download via modal (no auto-download)
+  const allow = await showDownloadConfirmModal();
+  if(allow){ downloadBlob(blob, name); showToast('Saved via download'); }
+  else showToast('Save aborted');
+}
+
+/* UI binding: short tap Save -> filename modal then save; long-press -> change folder */
+const btnSave = document.getElementById('btnSave');
+btnSave.addEventListener('click', async (e)=>{
+  e.preventDefault();
+  if(btnSave._longPressFired){ btnSave._longPressFired = false; return; }
+  const last = localStorage.getItem(LAST_FILE_KEY) || 'index.html';
+  const name = await showFilenameModal(last);
+  if(!name) return;
+  await doSaveHTML_directToRememberedFolder_withModal(name);
+});
+
+/* long-press: choose/change folder */
+let _pressTimer = null;
+btnSave.addEventListener('pointerdown', (e)=>{
+  _pressTimer = setTimeout(async ()=>{
+    btnSave._longPressFired = true;
+    const picked = await pickFolderAndRemember();
+    if(picked) showToast('Folder updated: ' + (picked.name || 'chosen folder'));
+    else showToast('Folder change cancelled');
+  }, 600);
+});
+['pointerup','pointerleave','pointercancel'].forEach(ev => { btnSave.addEventListener(ev, ()=>{ clearTimeout(_pressTimer); _pressTimer = null; }); });
+
+/* SaveL / OpenL (no changes) */
+async function saveLocal(autoName){
+  const name=autoName||localStorage.getItem(LAST_FILE_KEY)||'index.html';
+  const doc={name,html:editor.value||'',ts:Date.now()};
+  await idbPut(doc);
+  showToast('Saved locally: '+name);
+  if(openLPanel.style.display==='block') await buildOpenLPanel();
+}
+document.getElementById('btnSaveL').onclick=()=>saveLocal();
+
+async function buildOpenLPanel(){
+  const docs=await idbGetAll();
+  openLPanel.innerHTML='';
+  if(!docs.length){
+    const empty=document.createElement('div');empty.className='dropdown-item';empty.style.opacity=.7;empty.textContent='— No files —';
+    openLPanel.appendChild(empty);return;
+  }
+  docs.forEach(d=>{
+    const row=document.createElement('div');row.className='dropdown-item';
+    const left=document.createElement('div');left.style.minWidth='0';
+    const nm=document.createElement('div');nm.className='dropdown-name';nm.textContent=d.name;
+    const tm=document.createElement('div');tm.className='dropdown-time';tm.textContent=new Date(d.ts).toLocaleString();
+    left.appendChild(nm);left.appendChild(tm);
+    const del=document.createElement('button');del.className='drop-del';del.textContent='Delete';
+
+    row.addEventListener('click',async(e)=>{
+      if(e.target===del) return;
+      const full=await idbGet(d.name);
+      if(full){
+        editor.value=full.html||'';
+        localStorage.setItem(LAST_FILE_KEY,full.name);
+        updateLineNumbers();ensureEditorStretch();hideOpenL();
+      }
+    });
+
+    let pressTimer=null;
+    row.addEventListener('pointerdown',()=>{pressTimer=setTimeout(async()=>{if(confirm('Delete "'+d.name+'"?')){await idbDelete(d.name);await buildOpenLPanel();}},600);});
+    row.addEventListener('pointerup',()=>clearTimeout(pressTimer));
+    row.addEventListener('pointerleave',()=>clearTimeout(pressTimer));
+
+    del.addEventListener('click',async(e)=>{e.stopPropagation();if(confirm('Delete "'+d.name+'"?')){await idbDelete(d.name);await buildOpenLPanel();}});
+
+    row.appendChild(left);row.appendChild(del);openLPanel.appendChild(row);
+  });
+}
+function showOpenL(){
+  const r=btnOpenL.getBoundingClientRect();
+  openLPanel.style.left=r.left+'px';
+  openLPanel.style.top =(r.bottom+6)+'px';
+  openLPanel.style.display='block';
+}
+function hideOpenL(){openLPanel.style.display='none';}
+document.getElementById('btnOpenL').addEventListener('click',async(e)=>{
+  e.stopPropagation();
+  if(openLPanel.style.display==='block') hideOpenL();
+  else{await buildOpenLPanel();showOpenL();}
+});
+document.addEventListener('click',(e)=>{
+  if(openLPanel.style.display==='block'&&!openLPanel.contains(e.target)&&e.target!==btnOpenL){hideOpenL();}
+});
+window.addEventListener('resize',hideOpenL);
+
+/* Import */
+document.getElementById('fileInput').addEventListener('change',(ev)=>{
+  const f=ev.target.files[0];if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    editor.value=String(r.result||'');
+    localStorage.setItem(LAST_FILE_KEY,f.name);
+    updateLineNumbers();ensureEditorStretch();
+    showToast('Imported: '+f.name+' — tap SaveL to store');
+  };
+  r.readAsText(f);ev.target.value='';
+});
+
+/* Clipboard / parts / clear */
+document.getElementById('btnCopy').onclick=async()=>{try{await navigator.clipboard.writeText(editor.value||'');showToast('Copied');}catch(e){showToast('Copy blocked');}};
+document.getElementById('btnPaste').onclick=async()=>{try{const t=await navigator.clipboard.readText();if(t){editor.value+=(editor.value?'\n':'')+t;updateLineNumbers();ensureEditorStretch();}}catch(e){showToast('Paste blocked');}};
+document.getElementById('btnPartPaste').onclick=async()=>{
+  const t=await navigator.clipboard.readText();
+  if(!t) return showToast('Clipboard empty');
+  partCount++;
+  editor.value+=(editor.value?'\n':'')+`<!-- PART ${partCount} -->\n${t}\n<!-- END PART ${partCount} -->\n`;
+  updateLineNumbers();ensureEditorStretch();
+};
+
+function deletePart(n){
+  const rx=new RegExp(`<!-- PART ${n} -->[\\s\\S]*?<!-- END PART ${n} -->`,'i');
+  editor.value=editor.value.replace(rx,'');updateLineNumbers();ensureEditorStretch();
+}
+
+/* Delete Part popup */
+const partMenu=document.getElementById('partMenu');
+const partList=document.getElementById('partList');
+const partCancel=document.getElementById('partCancel');
+function openPartMenu(){
+  const re=/<!-- PART (\d+) -->/gi;const parts=[];let m;
+  while((m=re.exec(editor.value))!==null){parts.push(m[1]);}
+  if(!parts.length){showToast('No parts found');return;}
+  partList.innerHTML='';
+  parts.forEach(n=>{
+    const item=document.createElement('div');item.className='item';
+    const label=document.createElement('div');label.textContent='PART '+n;
+    const del=document.createElement('button');del.textContent='Delete';
+    del.onclick=()=>{deletePart(n);closePartMenu();};
+    item.appendChild(label);item.appendChild(del);partList.appendChild(item);
+  });
+  partMenu.style.display='block';
+}
+function closePartMenu(){partMenu.style.display='none';}
+document.getElementById('btnDeletePart').onclick=openPartMenu;
+partCancel.onclick=closePartMenu;
+partMenu.addEventListener('click',(e)=>{if(e.target===partMenu) closePartMenu();});
+document.addEventListener('keydown',(e)=>{if(partMenu.style.display==='block'&&e.key==='Escape') closePartMenu();});
+
+/* Theme cycle */
+function applyTheme(mode){ document.body.classList.remove('classic','dark'); const btn=document.getElementById('btnTheme'); if(mode==='classic'){document.body.classList.add('classic');btn.textContent='📜';} else if(mode==='dark'){document.body.classList.add('dark');btn.textContent='🌙';} else{btn.textContent='🌞';} }
+function toggleTheme(){ const saved=localStorage.getItem(THEME_KEY)||'light'; const next=saved==='light'?'classic':saved==='classic'?'dark':'light'; localStorage.setItem(THEME_KEY,next);applyTheme(next); }
+document.getElementById('btnTheme').onclick=toggleTheme;
+
+/* Open preview in new tab */
+document.getElementById('btnOpenTab').onclick=()=>{
+  const blob=new Blob([editor.value||''],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  const w=window.open(url,'_blank');setTimeout(()=>URL.revokeObjectURL(url),60000);
+  if(!w) alert('Popup blocked.');
+};
+
+/* Init Hello page and start in Preview */
+window.addEventListener('DOMContentLoaded',async ()=>{
+  const VERSION='v1.8.1';
+  editor.value=`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Hello Batliwala — ${VERSION}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    html,body{height:100%;margin:0}
+    body{
+      display:flex;align-items:center;justify-content:center;
+      font-family:system-ui,Segoe UI,Roboto,Arial;
+      background:radial-gradient(1200px 600px at 20% 20%,#e0f2fe 0%,#dbeafe 35%,#f0f9ff 70%,#ffffff 100%);
+    }
+    .card{background:rgba(255,255,255,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:18px;padding:28px 30px;box-shadow:0 20px 50px rgba(31,41,55,.25);text-align:center}
+    h1{margin:0 0 6px 0;font-size:28px;color:#0f172a}
+    .sub{font-size:14px;color:#334155}
+    .emoji{font-size:40px;margin-top:8px}
+    .ver{margin-top:10px;font-size:12px;color:#475569}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Hello Batliwala</h1>
+    <div class="sub">Have a great session!</div>
+    <div class="emoji">🥃🍷</div>
+    <div class="ver">${VERSION}</div>
+  </div>
+</body>
+</html>`;
+  updateLineNumbers();
+  applyTheme(localStorage.getItem(THEME_KEY)||'light');
+  await refreshFolderIndicator();
+  showTab('preview');
+  ensureEditorStretch();
+});
+
+/* Clear — also reset part counter to start from 1 next time */
+document.getElementById('btnClear').onclick=()=>{
+  if(!confirm('Clear the editor?')) return;
+  editor.value='';
+  partCount = 0;
+  updateLineNumbers();
+  ensureEditorStretch();
+};
+
+/* small UX: close OpenL when clicking outside */
+document.addEventListener('click', (e)=>{
+  if(openLPanel.style.display==='block' && !openLPanel.contains(e.target) && e.target !== btnOpenL) hideOpenL();
+});
+
+/* keyboard save */
+document.addEventListener('keydown', (e)=>{ if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); document.getElementById('btnSave').click(); } });
+
+/* small UX: Esc closes modal UI */
+document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape'){ modalBackdrop.style.display='none'; filenameModal.style.display='none'; overwriteModal.style.display='none'; downloadModal.style.display='none'; document.getElementById('openLPanel').style.display='none'; } });
+
+</script>
+</body>
+</html>
